@@ -1,5 +1,11 @@
-// Brain test
-// proof of concept 2023
+// MUS109IA & MAT276IA.
+// Spring 2022
+// Course Instrument 06. FM Vib-Visual (Object & Spectrum)
+// Press '[' or ']' to turn on & off GUI
+// Able to play with MIDI device
+// ***MacOS may require manual installation of assets3D.
+// brew install assimp
+// https://github.com/assimp/assimp/blob/master/Build.md
 // Myungin Lee
 
 #include <cstdio> // for printing to stdout
@@ -34,7 +40,7 @@ using namespace std;
 #define FFT_SIZE 4048
 static bool fullscreen = true;
 
-class BrainApp : public App
+class MyApp : public App
 {
 public:
   SynthGUIManager<FMWT> synthManager{"synth"};
@@ -52,7 +58,7 @@ public:
   Scene *ascene2{nullptr};
   Vec3f scene_min, scene_max, scene_center;
   Vec3f scene_min_half, scene_max_half, scene_center_half;
-  vector<Mesh> mMesh; 
+  vector<Mesh> mMesh;
   vector<Mesh> mMesh_half;
   Mesh center_of_part_mesh;
 
@@ -65,7 +71,7 @@ public:
   ParameterBool half_draw{"Show Half Brain", "", 0.0};
   ParameterBool diff_color{"Differentiate Parts (color)", "", 0.0};
   ParameterBool navi{"Navigate", "", 1.0};
-  ParameterInt upper_draw{"Draw Control", "",204,"", 1, 204};
+  ParameterInt upper_draw{"Draw Control", "", 204, "", 1, 204};
 
   void PlatformSetupSize()
   {
@@ -79,7 +85,7 @@ public:
     if (al_get_hostname() == "moxi" || fullscreen)
     {
       PlatformSetupSize();
-    }    
+    }
     nav().pos(0, 3, 30);
     lens().near(0.1).far(1000).fovy(60);
 
@@ -143,7 +149,7 @@ public:
     //    synthManager.synthSequencer().playSequence("synth2.synthSequence");
     synthManager.synthRecorder().verbose(true);
     // Initialize GUI and Parameter callbacks
-    // if (isPrimary()) 
+    // if (isPrimary())
     {
       // auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       // gui = &guiDomain->newGUI();
@@ -181,7 +187,7 @@ public:
     // Map table number to table in memory
     fm.mtable = int(synthManager.voice()->getInternalParameterValue("table"));
     time += dt;
-    Vec3f point_you_want_to_see = Vec3f(0,0,0);
+    Vec3f point_you_want_to_see = Vec3f(0, 0, 0);
     light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
     light.dir(point_you_want_to_see.x, point_you_want_to_see.y, point_you_want_to_see.z);
   }
@@ -222,48 +228,55 @@ public:
       // transparent_tex.bind();
       if (half_draw)
       {
-        g.translate(0,0.011,0);
+        g.translate(0, 0.011, 0);
         for (auto &m : mMesh_half)
         // half 137 parts of brain
         {
-          if(color_index < upper_draw-67)
-          {   
-            color_index +=1;
-            g.translate( 0.000001 * sin(color_index* time*0.1), 0.000001 * sin(time*0.2), 0.000001 * cos(color_index* time*0.8) );
-            // g.color(RGB( (color_index+200) / 255., 174 / 255., 177 / 255.)); 
-            if(diff_color){
-              g.color(HSV( (color_index) / 204., (sin(time*0.05*color_index)*0.1*color_index + 157) / 255., 177 / 255.)); 
-            } else{
-              g.color(RGB( (0.1*color_index+230) / 255., 174 / 255., 177 / 255.)); 
+          if (color_index < upper_draw - 67)
+          {
+            color_index += 1;
+            g.scale(1 + 0.001 * sin(color_index * time * 0.1), 1 + 0.001 * sin(time * 0.2), 1 + 0.001 * cos(color_index * time * 0.8));
+            // g.color(RGB( (color_index+200) / 255., 174 / 255., 177 / 255.));
+            if (diff_color)
+            {
+              g.color(HSV((color_index) / 204., (sin(time * 0.05 * color_index) * 0.1 * color_index + 107) / 255., 177 / 255.));
+            }
+            else
+            {
+              g.color(RGB((0.1 * color_index + 230) / 255., 174 / 255., 177 / 255.));
             }
             // g.color(RGB(242 / 255., 174 / 255., 177 / 255.));
             g.draw(m);
+            // g.draw(center_of_part_mesh);          }
           }
         }
       }
       else
       {
-        g.pushMatrix();      
+        g.pushMatrix();
         for (auto &m : mMesh)
         // 204 parts of brain
         {
-          if(color_index < upper_draw)
-          {       
-            color_index +=1;
-          g.translate( 0.000001 * sin(color_index* time*0.1), 0.000001 * sin(time*0.2), 0.000001 * cos(color_index* time*0.8) );
-            // g.color(RGB( (color_index+200) / 255., 174 / 255., 177 / 255.)); 
-            if(diff_color){
-              g.color(HSV( (color_index) / 204., (sin(time*0.05*color_index)*0.1*color_index + 157) / 255., 177 / 255.)); 
-            } else{
-              g.color(RGB( (0.1*color_index+230) / 255., 177/ 255., 177 / 255.)); 
+          if (color_index < upper_draw)
+          {
+            color_index += 1;
+            // g.translate( 0.000001 * sin(color_index* time*0.1), 0.000001 * sin(time*0.2), 0.000001 * cos(color_index* time*0.8) );
+            g.scale(1 + 0.001 * sin(color_index * time * 0.1), 1 + 0.001 * sin(time * 0.2), 1 + 0.001 * cos(color_index * time * 0.8));
+            // g.color(RGB( (color_index+200) / 255., 174 / 255., 177 / 255.));
+            if (diff_color)
+            {
+              g.color(HSV((color_index) / 204., (sin(time * 0.05 * color_index) * 0.1 * color_index + 107) / 255., 177 / 255.));
+            }
+            else
+            {
+              g.color(RGB((0.1 * color_index + 230) / 255., 177 / 255., 177 / 255.));
             }
             // g.color(RGB(242 / 255., 174 / 255., 177 / 255.));
             g.draw(m);
-            g.draw(center_of_part_mesh);
+            // g.draw(center_of_part_mesh);
           }
         }
         g.popMatrix();
-
       }
       g.blending(true);
       g.blendTrans();
@@ -326,13 +339,13 @@ public:
     case '7':
       upper_draw = 204;
     case '8':
-      upper_draw = upper_draw-1;
-      if(upper_draw<2)
+      upper_draw = upper_draw - 1;
+      if (upper_draw < 2)
         upper_draw = 1;
       break;
     case '9':
-      upper_draw = upper_draw+1;
-      if(upper_draw>204)
+      upper_draw = upper_draw + 1;
+      if (upper_draw > 204)
         upper_draw = 204;
       break;
     }
@@ -354,9 +367,9 @@ public:
 
 int main()
 {
-  BrainApp app;
+  MyApp app;
 
-  // Set up audiom
+  // Set up audio
   app.configureAudio(48000., 512, 2, 0);
 
   app.start();

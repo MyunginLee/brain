@@ -2,6 +2,8 @@ using namespace gam;
 using namespace al;
 using namespace std;
 #define FFT_SIZE 4048
+#define BLOCK_SIZE 512
+#define CHANNEL_COUNT 2
 // tables for oscillator
 gam::ArrayPow2<float> tbSaw(2048), tbSqr(2048), tbImp(2048), tbSin(2048),
     tbPls(2048), tb__1(2048), tb__2(2048), tb__3(2048), tb__4(2048);
@@ -17,7 +19,11 @@ public:
   gam::ADSR<> mVibEnv;
   Reverb<float> reverb;
   gam::Biquad<> mFilter{};
-
+  gam::STFT stft = gam::STFT(FFT_SIZE, FFT_SIZE / 4, 0, gam::HANN, gam::MAG_FREQ);
+  // This time, let's use spectrograms for each notes as the visual components.
+  Mesh mSpectrogram;
+  vector<float> spectrum;
+  Mesh waveformMesh;
   gam::Sine<> mod, mVib; // carrier, modulator sine oscillators
   gam::Osc<> car;
   double a = 0;
@@ -34,13 +40,16 @@ public:
   Mesh mMesh[numb_waveform];
   bool wireframe = false;
   bool vertexLight = false;
-
+  float waveformData[BLOCK_SIZE * CHANNEL_COUNT]{0};
   void init() override
   {
     reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
-
+    // mSpectrogram.primitive(Mesh::LINE_STRIP);
+    mSpectrogram.primitive(Mesh::POINTS);
+    // waveformMesh.primitive(Mesh::LINE_STRIP);
+    waveformMesh.primitive(Mesh::POINTS);
     // Diffusion amounts
     // Values near 0.7 are recommended. Moving further away from 0.7 will lead
     // to more distinct echoes.
@@ -49,6 +58,7 @@ public:
     mVibEnv.levels(0, 1, 1, 0);
     mAmpEnv.sustainPoint(2);
     mFilter.type(gam::FilterType(0));
+    spectrum.resize(FFT_SIZE / 2 + 1);
 
     createInternalTriggerParameter("frequency", 440, 10, 4000.0);
     createInternalTriggerParameter("amplitude", 0.1, 0.0, 1.0);
@@ -177,6 +187,17 @@ public:
       mPan(filtered, out1, out2);
       io.out(0) += out1;
       io.out(1) += out2;
+      // STFT for each notes
+      if (stft(s1))
+      { // Loop through all the frequency bins
+          for (unsigned k = 0; k < stft.numBins(); ++k)
+          {
+              // Here we simply scale the complex sample
+              spectrum[k] = tanh(pow(stft.bin(k).real(), 1.3));
+          }
+      }
+      // waveform 
+      memcpy(&waveformData, io.outBuffer(), BLOCK_SIZE * CHANNEL_COUNT * sizeof(float));
     }
     if (mAmpEnv.done() && (mEnvFollow.value() < 0.001))
       free();
@@ -191,6 +212,28 @@ public:
     g.polygonMode(wireframe ? GL_LINE : GL_FILL);
     // light.pos(0, 0, 0);
     gl::depthTesting(true);
+    mSpectrogram.reset();
+    // mSpectrogram.primitive(Mesh::LINE_STRIP);
+
+    for (int i = 0; i < FFT_SIZE / 2; i++)
+    {
+        mSpectrogram.color(HSV(spectrum[i] * 1000 + al::rnd::uniform()));
+        mSpectrogram.vertex(i, spectrum[i], 0.0);
+    }
+    // wavefrom
+    float chRatio = 1 / float(CHANNEL_COUNT);
+    float hSegment = chRatio * 10;
+
+    for(int ch = 0; ch < CHANNEL_COUNT; ch++) {
+      waveformMesh.reset();
+      float yBase = (CHANNEL_COUNT - ch - 1) * hSegment;
+      for(int i = 0; i < BLOCK_SIZE; i++) {
+        float x = 10 * (i / float(BLOCK_SIZE));
+        float y = hSegment * ((waveformData[ch * BLOCK_SIZE + i] + 1)/ 2.0) + yBase;
+        
+        waveformMesh.vertex(x, y);
+      }
+    }
     g.pushMatrix();
     g.depthTesting(true);
     g.lighting(true);
@@ -200,9 +243,16 @@ public:
     g.rotate(mVib(), Vec3f(0, 1, 0));
     g.rotate(mVib() * mVibDepth, Vec3f(1));
     float scaling = getInternalParameterValue("amplitude");
-    g.scale(10, 0.1,0.1);
-    g.color(HSV( (getInternalParameterValue("modMul") + init_rot_quant) / 360, 100 * mEnvFollow.value(), mEnvFollow.value()+0.9));
-    g.draw(mMesh[shape]);
+    // g.scale(10, 0.1,0.1);
+    // g.color(HSV( (getInternalParameterValue("modMul") + init_rot_quant) / 360, 100 * mEnvFollow.value(), mEnvFollow.value()+0.9));
+    // g.draw(mMesh[shape]);
+    g.pointSize(3);
+    // g.scale(10.0 / FFT_SIZE, 500, 1.0);
+    g.color(HSV( (getInternalParameterValue("modMul") + init_rot_quant) / 360, 0.8 +100 * mEnvFollow.value(), 100.));
+    // g.draw(mSpectrogram);
+    g.scale(0.3, 1, 1);
+
+    g.draw(waveformMesh);
     g.popMatrix();
   }
 
