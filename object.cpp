@@ -1,11 +1,5 @@
-// MUS109IA & MAT276IA.
-// Spring 2022
-// Course Instrument 06. FM Vib-Visual (Object & Spectrum)
-// Press '[' or ']' to turn on & off GUI
-// Able to play with MIDI device
-// ***MacOS may require manual installation of assets3D.
-// brew install assimp
-// https://github.com/assimp/assimp/blob/master/Build.md
+// Brain test
+// proof of concept 2023
 // Myungin Lee
 
 #include <cstdio> // for printing to stdout
@@ -40,7 +34,7 @@ using namespace std;
 #define FFT_SIZE 4048
 static bool fullscreen = true;
 
-class MyApp : public App
+class BrainApp : public App
 {
 public:
   SynthGUIManager<FMWT> synthManager{"synth"};
@@ -360,9 +354,9 @@ public:
 
 int main()
 {
-  MyApp app;
+  BrainApp app;
 
-  // Set up audio
+  // Set up audiom
   app.configureAudio(48000., 512, 2, 0);
 
   app.start();
